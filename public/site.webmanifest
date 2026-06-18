@@ -1,0 +1,30 @@
+{
+  "name": "Serenata - Gestão de casamentos",
+  "short_name": "Serenata",
+  "description": "Gestão elegante de convidados, presentes, tarefas e agenda para casamentos.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbf7f3",
+  "theme_color": "#7d3038",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -39,6 +39,10 @@ Este projeto pode ser publicado de duas formas:
 
 O arquivo `firebase.json` já aponta para `dist` e inclui o fallback de rotas da SPA.
 
+### SEO e compartilhamento
+
+Os metadados Open Graph, Twitter Card, JSON-LD, sitemap e imagem social usam `https://heldereanapaula-cee2f.web.app/` como URL pública. Ao conectar um domínio personalizado, atualize esse endereço em `index.html`, `public/robots.txt` e `public/sitemap.xml`.
+
 ## Estrutura atual
 
 - Login com e-mail e senha via Firebase.

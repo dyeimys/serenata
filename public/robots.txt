@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://heldereanapaula-cee2f.web.app/sitemap.xml
