@@ -28,6 +28,16 @@ O arquivo `.env` não é versionado. As chaves públicas de configuração ident
 - `npm run build`: valida o TypeScript e gera a versão de produção.
 - `npm run lint`: executa a análise estática.
 - `npm run preview`: visualiza o build de produção.
+- `npm start`: serve o build na porta definida por `PORT` (padrão `8080`).
+
+## Deploy no Firebase
+
+Este projeto pode ser publicado de duas formas:
+
+- **Firebase App Hosting:** execute o deploy novamente. O script `start` inicia o servidor na porta exigida pelo Cloud Run.
+- **Firebase Hosting clássico (recomendado para este frontend estático):** execute `npm run build` e depois `firebase deploy --only hosting`.
+
+O arquivo `firebase.json` já aponta para `dist` e inclui o fallback de rotas da SPA.
 
 ## Estrutura atual
 
