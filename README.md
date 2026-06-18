@@ -132,3 +132,29 @@ match /tasks/{taskId} {
   allow read, write: if request.auth != null;
 }
 ```
+
+### Agenda
+
+Compromissos avulsos são armazenados em `agendaEvents`. Tarefas com `dueDate` aparecem automaticamente no calendário e não são duplicadas nesta coleção.
+
+```ts
+{
+  title: string
+  description: string
+  date: string // YYYY-MM-DD
+  startTime: string // HH:mm ou vazio
+  endTime: string // HH:mm ou vazio
+  location: string
+  category: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+```
+
+```text
+match /agendaEvents/{eventId} {
+  allow read, write: if request.auth != null;
+}
+```
+
+Ao transformar um compromisso avulso em tarefa, o painel cria o documento em `tasks` e remove o documento original de `agendaEvents` no mesmo lote.

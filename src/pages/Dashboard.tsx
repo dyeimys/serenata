@@ -24,17 +24,21 @@ const Overview = lazy(async () => {
   const module = await import('./Overview')
   return { default: module.Overview }
 })
+const Agenda = lazy(async () => {
+  const module = await import('./Agenda')
+  return { default: module.Agenda }
+})
 
 type DashboardProps = { user: User }
 
-type View = 'overview' | 'guests' | 'gifts' | 'tasks' | 'settings'
+type View = 'overview' | 'guests' | 'gifts' | 'tasks' | 'agenda' | 'settings'
 
 const menuItems = [
   { label: 'Visão geral', icon: LayoutDashboard, view: 'overview' as View },
   { label: 'Convidados', icon: Users, view: 'guests' as View },
   { label: 'Lista de presentes', icon: Gift, view: 'gifts' as View },
   { label: 'Tarefas', icon: ListTodo, view: 'tasks' as View },
-  { label: 'Agenda', icon: CalendarDays, badge: 'Plano S+' },
+  { label: 'Agenda', icon: CalendarDays, view: 'agenda' as View, badge: 'Plano S+' },
   { label: 'Configurações', icon: Settings, view: 'settings' as View },
 ]
 
@@ -66,7 +70,7 @@ export function Dashboard({ user }: DashboardProps) {
           <div><p className="header-kicker">Área de gestão</p><strong>Olá, {firstName}</strong></div>
           <div className="header-actions"><button aria-label="Notificações"><Bell size={20} /></button><div className="avatar">{initial}</div><span>{user.email}</span></div>
         </header>
-        {view === 'guests' ? <Suspense fallback={<PageLoading />}><Guests /></Suspense> : view === 'gifts' ? <Suspense fallback={<PageLoading />}><Gifts /></Suspense> : view === 'tasks' ? <Suspense fallback={<PageLoading />}><Tasks /></Suspense> : view === 'settings' ? <Suspense fallback={<PageLoading />}><SettingsPage /></Suspense> : <Suspense fallback={<PageLoading />}><Overview /></Suspense>}
+        {view === 'guests' ? <Suspense fallback={<PageLoading />}><Guests /></Suspense> : view === 'gifts' ? <Suspense fallback={<PageLoading />}><Gifts /></Suspense> : view === 'tasks' ? <Suspense fallback={<PageLoading />}><Tasks /></Suspense> : view === 'agenda' ? <Suspense fallback={<PageLoading />}><Agenda /></Suspense> : view === 'settings' ? <Suspense fallback={<PageLoading />}><SettingsPage /></Suspense> : <Suspense fallback={<PageLoading />}><Overview /></Suspense>}
       </div>
     </div>
   )
