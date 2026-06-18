@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import type { User } from 'firebase/auth'
 import { signOut } from 'firebase/auth'
-import { Bell, CalendarDays, ChevronRight, Gift, Heart, LayoutDashboard, LogOut, Menu, Settings, Users, X } from 'lucide-react'
+import { Bell, CalendarDays, ChevronRight, Gift, Heart, LayoutDashboard, ListTodo, LogOut, Menu, Settings, Users, X } from 'lucide-react'
 import { auth } from '../lib/firebase'
 
 const Guests = lazy(async () => {
@@ -16,15 +16,20 @@ const SettingsPage = lazy(async () => {
   const module = await import('./Settings')
   return { default: module.Settings }
 })
+const Tasks = lazy(async () => {
+  const module = await import('./Tasks')
+  return { default: module.Tasks }
+})
 
 type DashboardProps = { user: User }
 
-type View = 'overview' | 'guests' | 'gifts' | 'settings'
+type View = 'overview' | 'guests' | 'gifts' | 'tasks' | 'settings'
 
 const menuItems = [
   { label: 'Visão geral', icon: LayoutDashboard, view: 'overview' as View },
   { label: 'Convidados', icon: Users, view: 'guests' as View },
   { label: 'Lista de presentes', icon: Gift, view: 'gifts' as View },
+  { label: 'Tarefas', icon: ListTodo, view: 'tasks' as View },
   { label: 'Agenda', icon: CalendarDays, badge: 'Plano S+' },
   { label: 'Configurações', icon: Settings, view: 'settings' as View },
 ]
@@ -57,7 +62,7 @@ export function Dashboard({ user }: DashboardProps) {
           <div><p className="header-kicker">Área de gestão</p><strong>Olá, {firstName}</strong></div>
           <div className="header-actions"><button aria-label="Notificações"><Bell size={20} /></button><div className="avatar">{initial}</div><span>{user.email}</span></div>
         </header>
-        {view === 'guests' ? <Suspense fallback={<PageLoading />}><Guests /></Suspense> : view === 'gifts' ? <Suspense fallback={<PageLoading />}><Gifts /></Suspense> : view === 'settings' ? <Suspense fallback={<PageLoading />}><SettingsPage /></Suspense> : <main className="dashboard-content">
+        {view === 'guests' ? <Suspense fallback={<PageLoading />}><Guests /></Suspense> : view === 'gifts' ? <Suspense fallback={<PageLoading />}><Gifts /></Suspense> : view === 'tasks' ? <Suspense fallback={<PageLoading />}><Tasks /></Suspense> : view === 'settings' ? <Suspense fallback={<PageLoading />}><SettingsPage /></Suspense> : <main className="dashboard-content">
           <div className="dashboard-title"><div><p className="eyebrow">Visão geral</p><h1>Seu casamento, em harmonia.</h1></div><span className="today"><CalendarDays size={17} /> Planejamento em andamento</span></div>
           <section className="welcome-card">
             <div><p className="eyebrow">Bem-vindo à Serenata</p><h2>Tudo pronto para começar a planejar.</h2><p>Este é o seu novo espaço de gestão. Em breve, convidados, fornecedores, orçamento e cronograma estarão reunidos aqui.</p></div>

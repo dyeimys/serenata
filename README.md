@@ -107,3 +107,28 @@ match /settings/gifts {
   allow write: if request.auth != null;
 }
 ```
+
+### Quadro de tarefas
+
+O módulo Kanban usa a coleção `tasks`:
+
+```ts
+{
+  title: string
+  description: string
+  status: 'todo' | 'in_progress' | 'done'
+  priority: 'low' | 'medium' | 'high'
+  dueDate: string // YYYY-MM-DD ou vazio
+  order: number
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+```
+
+As tarefas são administrativas e devem exigir autenticação:
+
+```text
+match /tasks/{taskId} {
+  allow read, write: if request.auth != null;
+}
+```
