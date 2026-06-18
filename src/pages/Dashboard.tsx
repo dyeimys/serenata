@@ -25,7 +25,7 @@ const menuItems = [
   { label: 'Visão geral', icon: LayoutDashboard, view: 'overview' as View },
   { label: 'Convidados', icon: Users, view: 'guests' as View },
   { label: 'Lista de presentes', icon: Gift, view: 'gifts' as View },
-  { label: 'Agenda', icon: CalendarDays },
+  { label: 'Agenda', icon: CalendarDays, badge: 'Plano S+' },
   { label: 'Configurações', icon: Settings, view: 'settings' as View },
 ]
 
@@ -42,8 +42,8 @@ export function Dashboard({ user }: DashboardProps) {
         <button className="close-menu" onClick={() => setMenuOpen(false)} aria-label="Fechar menu"><X size={22} /></button>
         <nav aria-label="Menu principal">
           <p className="nav-label">Seu casamento</p>
-          {menuItems.map(({ label, icon: Icon, view: itemView }) => (
-            <button key={label} className={`nav-item ${itemView === view ? 'nav-item--active' : ''}`} onClick={() => { if (itemView) setView(itemView); setMenuOpen(false) }}><Icon size={19} /><span>{label}</span>{itemView === view && <ChevronRight size={16} />}</button>
+          {menuItems.map(({ label, icon: Icon, view: itemView, badge }) => (
+            <button key={label} className={`nav-item ${itemView === view ? 'nav-item--active' : ''}`} onClick={() => { if (itemView) setView(itemView); setMenuOpen(false) }}><Icon size={19} /><span>{label}</span>{badge && <small className="nav-plan-badge">{badge}</small>}{itemView === view && <ChevronRight size={16} />}</button>
           ))}
         </nav>
         <div className="sidebar-event"><Heart size={20} /><span>Seu grande dia</span><strong>Começa por aqui</strong></div>
