@@ -1,7 +1,8 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, type ReactNode, Suspense, useState } from 'react'
 import type { User } from 'firebase/auth'
 import { signOut } from 'firebase/auth'
 import { Bell, CalendarDays, ChevronRight, Gift, Heart, LayoutDashboard, ListTodo, LogOut, Menu, Settings, Users, X } from 'lucide-react'
+import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { auth } from '../lib/firebase'
 
 const Guests = lazy(async () => {
@@ -24,27 +25,19 @@ const Overview = lazy(async () => {
   const module = await import('./Overview')
   return { default: module.Overview }
 })
-const Agenda = lazy(async () => {
-  const module = await import('./Agenda')
-  return { default: module.Agenda }
-})
-
 type DashboardProps = { user: User }
 
-type View = 'overview' | 'guests' | 'gifts' | 'tasks' | 'agenda' | 'settings'
-
 const menuItems = [
-  { label: 'Visão geral', icon: LayoutDashboard, view: 'overview' as View },
-  { label: 'Convidados', icon: Users, view: 'guests' as View },
-  { label: 'Lista de presentes', icon: Gift, view: 'gifts' as View },
-  { label: 'Tarefas', icon: ListTodo, view: 'tasks' as View },
-  { label: 'Agenda', icon: CalendarDays, view: 'agenda' as View, badge: 'Plano S+', disabled: true },
-  { label: 'Configurações', icon: Settings, view: 'settings' as View },
+  { label: 'Visão geral', icon: LayoutDashboard, path: '/dashboard' },
+  { label: 'Convidados', icon: Users, path: '/convidados' },
+  { label: 'Lista de presentes', icon: Gift, path: '/presentes' },
+  { label: 'Tarefas', icon: ListTodo, path: '/tarefas' },
+  { label: 'Agenda', icon: CalendarDays, path: '/agenda', badge: 'Plano S+', disabled: true },
+  { label: 'Configurações', icon: Settings, path: '/configuracoes' },
 ]
 
 export function Dashboard({ user }: DashboardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [view, setView] = useState<View>('overview')
   const firstName = user.displayName?.split(' ')[0] || 'Organizador'
   const initial = firstName.charAt(0).toUpperCase()
 
@@ -55,8 +48,12 @@ export function Dashboard({ user }: DashboardProps) {
         <button className="close-menu" onClick={() => setMenuOpen(false)} aria-label="Fechar menu"><X size={22} /></button>
         <nav aria-label="Menu principal">
           <p className="nav-label">Seu casamento</p>
-          {menuItems.map(({ label, icon: Icon, view: itemView, badge, disabled }) => (
-            <button key={label} className={`nav-item ${itemView === view ? 'nav-item--active' : ''} ${disabled ? 'nav-item--disabled' : ''}`} disabled={disabled} title={disabled ? 'Disponível em breve' : undefined} onClick={() => { if (itemView && !disabled) setView(itemView); setMenuOpen(false) }}><Icon size={19} /><span>{label}</span>{badge && <small className="nav-plan-badge">{badge}</small>}{itemView === view && !disabled && <ChevronRight size={16} />}</button>
+          {menuItems.map(({ label, icon: Icon, path, badge, disabled }) => disabled ? (
+            <button key={path} className="nav-item nav-item--disabled" disabled title="Disponível em breve"><Icon size={19} /><span>{label}</span>{badge && <small className="nav-plan-badge">{badge}</small>}</button>
+          ) : (
+            <NavLink key={path} to={path} className={({ isActive }) => `nav-item ${isActive ? 'nav-item--active' : ''}`} onClick={() => setMenuOpen(false)}>
+              {({ isActive }) => <><Icon size={19} /><span>{label}</span>{badge && <small className="nav-plan-badge">{badge}</small>}{isActive && <ChevronRight size={16} />}</>}
+            </NavLink>
           ))}
         </nav>
         <div className="sidebar-event"><Heart size={20} /><span>Seu grande dia</span><strong>Começa por aqui</strong></div>
@@ -70,10 +67,23 @@ export function Dashboard({ user }: DashboardProps) {
           <div><p className="header-kicker">Área de gestão</p><strong>Olá, {firstName}</strong></div>
           <div className="header-actions"><button aria-label="Notificações"><Bell size={20} /></button><div className="avatar">{initial}</div><span>{user.email}</span></div>
         </header>
-        {view === 'guests' ? <Suspense fallback={<PageLoading />}><Guests /></Suspense> : view === 'gifts' ? <Suspense fallback={<PageLoading />}><Gifts /></Suspense> : view === 'tasks' ? <Suspense fallback={<PageLoading />}><Tasks /></Suspense> : view === 'agenda' ? <Suspense fallback={<PageLoading />}><Agenda /></Suspense> : view === 'settings' ? <Suspense fallback={<PageLoading />}><SettingsPage /></Suspense> : <Suspense fallback={<PageLoading />}><Overview /></Suspense>}
+        <Routes>
+          <Route path="/dashboard" element={<LazyPage><Overview /></LazyPage>} />
+          <Route path="/convidados" element={<LazyPage><Guests /></LazyPage>} />
+          <Route path="/presentes" element={<LazyPage><Gifts /></LazyPage>} />
+          <Route path="/tarefas" element={<LazyPage><Tasks /></LazyPage>} />
+          <Route path="/configuracoes" element={<LazyPage><SettingsPage /></LazyPage>} />
+          <Route path="/agenda" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
       </div>
     </div>
   )
+}
+
+function LazyPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<PageLoading />}>{children}</Suspense>
 }
 
 function PageLoading() {

@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { FirebaseError } from 'firebase/app'
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth'
 import { Eye, EyeOff, Heart, LockKeyhole, Mail } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { auth } from '../lib/firebase'
 
 const authMessages: Record<string, string> = {
@@ -13,6 +14,8 @@ const authMessages: Record<string, string> = {
 }
 
 export function Login() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -29,6 +32,8 @@ export function Login() {
     try {
       if (!auth) throw new Error('Firebase não configurado')
       await signInWithEmailAndPassword(auth, email.trim(), password)
+      const destination = (location.state as { from?: string } | null)?.from ?? '/dashboard'
+      navigate(destination, { replace: true })
     } catch (caught) {
       const code = caught instanceof FirebaseError ? caught.code : ''
       setError(authMessages[code] ?? 'Não foi possível entrar. Tente novamente.')

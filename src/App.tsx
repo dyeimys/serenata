@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { User } from 'firebase/auth'
 import { onAuthStateChanged } from 'firebase/auth'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { auth, isFirebaseConfigured } from './lib/firebase'
 import { Dashboard } from './pages/Dashboard'
 import { Login } from './pages/Login'
@@ -43,7 +44,26 @@ function App() {
     )
   }
 
-  return user ? <Dashboard user={user} /> : <Login />
+  if (user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/*" element={<Dashboard user={user} />} />
+      </Routes>
+    )
+  }
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="*" element={<LoginRedirect />} />
+    </Routes>
+  )
+}
+
+function LoginRedirect() {
+  const location = useLocation()
+  return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
 }
 
 export default App

@@ -52,6 +52,18 @@ Os metadados Open Graph, Twitter Card, JSON-LD, sitemap e imagem social usam `ht
 - Lista de confirmações em tempo real a partir de `rsvpSubmissions`.
 - Layout responsivo para desktop e celular.
 
+## Rotas da aplicação
+
+- `/login`: autenticação.
+- `/dashboard`: visão geral.
+- `/convidados`: confirmações de presença.
+- `/presentes`: catálogo administrativo de presentes.
+- `/tarefas`: quadro Kanban.
+- `/configuracoes`: configurações do sistema.
+- `/agenda`: temporariamente desativada e redirecionada para o dashboard.
+
+Todas as rotas administrativas exigem autenticação. O destino solicitado é preservado durante o redirecionamento para o login.
+
 ## Acesso ao Firestore
 
 A conta autenticada precisa ter permissão de leitura na coleção. Nas regras do Firestore, mantenha a criação compatível com o site do convite e restrinja a consulta ao painel autenticado. Exemplo da regra de leitura:
