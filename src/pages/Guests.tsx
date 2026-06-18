@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { collection, onSnapshot, orderBy, query, type Timestamp } from 'firebase/firestore'
 import { Baby, Check, Search, UserRound, Users, X } from 'lucide-react'
 import { db } from '../lib/firestore'
+import { isRsvpConfirmed } from '../lib/rsvp'
 
 type RsvpSubmission = {
   id: string
@@ -15,10 +16,6 @@ type RsvpSubmission = {
 }
 
 type Filter = 'all' | 'confirmed' | 'declined'
-
-function isConfirmed(submission: RsvpSubmission) {
-  return submission.attending !== false && submission.totalGuests > 0
-}
 
 function formatDate(timestamp: Timestamp | null) {
   if (!timestamp) return 'Data não informada'
@@ -72,19 +69,19 @@ export function Guests() {
   }, [])
 
   const summary = useMemo(() => {
-    const confirmed = submissions.filter(isConfirmed)
+    const confirmed = submissions.filter(isRsvpConfirmed)
     return {
       people: confirmed.reduce((total, item) => total + item.totalGuests, 0),
       adults: confirmed.reduce((total, item) => total + item.adults, 0),
       children: confirmed.reduce((total, item) => total + item.children, 0),
-      declined: submissions.filter((item) => !isConfirmed(item)).length,
+      declined: submissions.filter((item) => !isRsvpConfirmed(item)).length,
     }
   }, [submissions])
 
   const visibleSubmissions = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('pt-BR')
     return submissions.filter((submission) => {
-      const confirmed = isConfirmed(submission)
+      const confirmed = isRsvpConfirmed(submission)
       const matchesFilter = filter === 'all' || (filter === 'confirmed' ? confirmed : !confirmed)
       const matchesSearch = !term || `${submission.name} ${submission.phone}`.toLocaleLowerCase('pt-BR').includes(term)
       return matchesFilter && matchesSearch
@@ -127,7 +124,7 @@ export function Guests() {
             <table className="guest-table">
               <thead><tr><th>Convidado</th><th>Contato</th><th>Adultos</th><th>Crianças</th><th>Total</th><th>Resposta</th><th>Enviado em</th></tr></thead>
               <tbody>{visibleSubmissions.map((submission) => {
-                const confirmed = isConfirmed(submission)
+                const confirmed = isRsvpConfirmed(submission)
                 return <tr key={submission.id}>
                   <td data-label="Convidado"><span className="guest-avatar">{submission.name.charAt(0).toUpperCase()}</span><div><strong>{submission.name}</strong><small>ID: {submission.id}</small></div></td>
                   <td data-label="Contato">{submission.phone}</td>

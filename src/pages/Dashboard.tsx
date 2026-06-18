@@ -20,6 +20,10 @@ const Tasks = lazy(async () => {
   const module = await import('./Tasks')
   return { default: module.Tasks }
 })
+const Overview = lazy(async () => {
+  const module = await import('./Overview')
+  return { default: module.Overview }
+})
 
 type DashboardProps = { user: User }
 
@@ -62,18 +66,7 @@ export function Dashboard({ user }: DashboardProps) {
           <div><p className="header-kicker">Área de gestão</p><strong>Olá, {firstName}</strong></div>
           <div className="header-actions"><button aria-label="Notificações"><Bell size={20} /></button><div className="avatar">{initial}</div><span>{user.email}</span></div>
         </header>
-        {view === 'guests' ? <Suspense fallback={<PageLoading />}><Guests /></Suspense> : view === 'gifts' ? <Suspense fallback={<PageLoading />}><Gifts /></Suspense> : view === 'tasks' ? <Suspense fallback={<PageLoading />}><Tasks /></Suspense> : view === 'settings' ? <Suspense fallback={<PageLoading />}><SettingsPage /></Suspense> : <main className="dashboard-content">
-          <div className="dashboard-title"><div><p className="eyebrow">Visão geral</p><h1>Seu casamento, em harmonia.</h1></div><span className="today"><CalendarDays size={17} /> Planejamento em andamento</span></div>
-          <section className="welcome-card">
-            <div><p className="eyebrow">Bem-vindo à Serenata</p><h2>Tudo pronto para começar a planejar.</h2><p>Este é o seu novo espaço de gestão. Em breve, convidados, fornecedores, orçamento e cronograma estarão reunidos aqui.</p></div>
-            <div className="welcome-monogram">S</div>
-          </section>
-          <section className="metric-grid" aria-label="Resumo do casamento">
-            <article><span className="metric-icon"><Users size={21} /></span><p>Convidados</p><strong>0</strong><small>Cadastre sua primeira lista</small></article>
-            <article><span className="metric-icon"><CalendarDays size={21} /></span><p>Compromissos</p><strong>0</strong><small>Nenhum evento agendado</small></article>
-            <article><span className="metric-icon"><Heart size={21} /></span><p>Progresso geral</p><strong>0%</strong><small>Uma linda jornada começa</small></article>
-          </section>
-        </main>}
+        {view === 'guests' ? <Suspense fallback={<PageLoading />}><Guests /></Suspense> : view === 'gifts' ? <Suspense fallback={<PageLoading />}><Gifts /></Suspense> : view === 'tasks' ? <Suspense fallback={<PageLoading />}><Tasks /></Suspense> : view === 'settings' ? <Suspense fallback={<PageLoading />}><SettingsPage /></Suspense> : <Suspense fallback={<PageLoading />}><Overview /></Suspense>}
       </div>
     </div>
   )
