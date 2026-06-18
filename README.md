@@ -1,0 +1,99 @@
+# Serenata
+
+Base web para um sistema de gestão de casamentos, construída com React, TypeScript, Vite e Firebase Authentication.
+
+## Primeiros passos
+
+Requisitos: Node.js 20.19+ ou 22.12+.
+
+```bash
+npm install
+copy .env.example .env
+npm run dev
+```
+
+## Configurar o Firebase
+
+1. Crie ou abra um projeto no [Firebase Console](https://console.firebase.google.com/).
+2. Em **Configurações do projeto > Seus aplicativos**, adicione um aplicativo Web.
+3. Copie os valores de `firebaseConfig` para as variáveis correspondentes no arquivo `.env`.
+4. Em **Authentication > Sign-in method**, habilite **E-mail/senha**.
+5. Em **Authentication > Users**, crie o primeiro usuário que poderá acessar o sistema.
+
+O arquivo `.env` não é versionado. As chaves públicas de configuração identificam o app; a segurança dos dados deve ser garantida pelas regras do Firebase e pela validação de tokens no futuro backend.
+
+## Comandos
+
+- `npm run dev`: inicia o ambiente local.
+- `npm run build`: valida o TypeScript e gera a versão de produção.
+- `npm run lint`: executa a análise estática.
+- `npm run preview`: visualiza o build de produção.
+
+## Estrutura atual
+
+- Login com e-mail e senha via Firebase.
+- Recuperação de senha por e-mail.
+- Persistência e observação da sessão do usuário.
+- Área autenticada com header, menu lateral e dashboard inicial.
+- Lista de confirmações em tempo real a partir de `rsvpSubmissions`.
+- Layout responsivo para desktop e celular.
+
+## Acesso ao Firestore
+
+A conta autenticada precisa ter permissão de leitura na coleção. Nas regras do Firestore, mantenha a criação compatível com o site do convite e restrinja a consulta ao painel autenticado. Exemplo da regra de leitura:
+
+```text
+match /rsvpSubmissions/{submissionId} {
+  allow read: if request.auth != null;
+}
+```
+
+### Lista de presentes
+
+Os presentes são armazenados na coleção `giftRegistryItems` com este formato:
+
+```ts
+{
+  title: string
+  giftType: string
+  image: string
+  imageAlt: string // usa title quando não informado
+  productLink: string // vazio quando não informado
+  received: boolean
+  disabled: boolean
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+```
+
+O painel precisa de leitura e escrita autenticadas:
+
+```text
+match /giftRegistryItems/{giftId} {
+  allow read, write: if request.auth != null;
+}
+```
+
+Para o futuro catálogo público, consulte apenas documentos com `disabled == false` e ajuste a regra de leitura pública de acordo com esse filtro.
+
+### Configuração da lista de presentes
+
+A aba **Configurações > Lista de presentes** salva um documento único em `settings/gifts`:
+
+```ts
+{
+  enableGiftConfirmation: boolean
+  whatsappNumber: string
+  confirmationMessageTemplate: string // deve conter {item}
+  updatedAt: Timestamp
+}
+```
+
+Como o site público precisará ler essa configuração, a leitura pode ser pública enquanto a escrita permanece administrativa:
+
+```text
+match /settings/gifts {
+  allow read: if true;
+  allow write: if request.auth != null;
+}
+```
