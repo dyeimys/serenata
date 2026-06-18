@@ -114,7 +114,7 @@ export function Login() {
             </button>
           </form>
 
-          <p className="login-help">Precisa de acesso? <a href="mailto:contato@serenata.com.br">Fale com o administrador</a></p>
+          <p className="login-help">Precisa de acesso? <a href="https://wa.me/5564993243584?text=Ol%C3%A1%21%20Gostaria%20de%20solicitar%20acesso%20ao%20sistema%20Serenata." target="_blank" rel="noreferrer">Fale com o administrador</a></p>
         </div>
         <p className="copyright">© 2026 Serenata. Feito com cuidado para o seu grande dia.</p>
       </section>
