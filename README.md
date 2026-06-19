@@ -52,6 +52,28 @@ Os metadados Open Graph, Twitter Card, JSON-LD, sitemap e imagem social usam `ht
 - Área autenticada com header, menu lateral e dashboard inicial.
 - Lista de confirmações em tempo real a partir de `rsvpSubmissions`.
 - Layout responsivo para desktop e celular.
+- Assistente de IA para organizacao do casamento, com conversas privadas por usuario.
+
+## Assistente de IA
+
+O assistente usa Genkit nas Cloud Functions em `us-central1`, compativel com o Firestore `nam5`, e Gemini pelo Google Cloud Vertex AI. O navegador nunca recebe credenciais do modelo. A API `aiplatform.googleapis.com` precisa estar habilitada no projeto.
+
+Configuracoes opcionais das Functions:
+
+- `GENKIT_MODEL`: modelo usado pelo assistente; padrao `gemini-2.5-flash`.
+- `GENKIT_LOCATION`: localizacao do modelo; padrao `global`.
+- `ENFORCE_APP_CHECK`: use `true` depois de configurar App Check no aplicativo Web.
+
+As conversas ficam em `chatThreads`, com mensagens e propostas em subcolecoes. Cada thread registra `createdByUserId` e todos os acessos passam pelas callable functions. O cliente nao acessa essas colecoes diretamente.
+
+O perfil global do casamento fica em `settings/weddingProfile`. Para inicializa-lo em um projeto novo usando Application Default Credentials:
+
+```bash
+cd functions
+npm run seed:wedding-profile
+```
+
+O botao flutuante abre o chat como painel lateral no desktop e em tela cheia em dispositivos com ate 850 px. Propostas da IA so criam tarefas depois da confirmacao explicita do usuario.
 
 ## Rotas da aplicação
 

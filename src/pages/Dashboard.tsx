@@ -4,6 +4,7 @@ import { Bell, CalendarDays, ChevronRight, Gift, Heart, LayoutDashboard, ListTod
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { auth } from '../lib/firebase'
 import type { UserProfile } from '../lib/userProfile'
+import { AssistantWidget } from '../components/assistant/AssistantWidget'
 
 const Guests = lazy(async () => {
   const module = await import('./Guests')
@@ -86,6 +87,7 @@ export function Dashboard({ profile, email }: DashboardProps) {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
+      <AssistantWidget />
     </div>
   )
 }

@@ -20,7 +20,7 @@ type UserListResponse = {
   users: ManagedUser[]
 }
 
-const functions = firebaseApp ? getFunctions(firebaseApp, 'southamerica-east1') : null
+const functions = firebaseApp ? getFunctions(firebaseApp, 'us-central1') : null
 
 export async function listAuthenticationUsers(): Promise<UserListResponse> {
   if (!functions) throw new Error('Firebase não configurado')

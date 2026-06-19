@@ -5,7 +5,7 @@ const { HttpsError, onCall } = require('firebase-functions/v2/https')
 
 initializeApp()
 
-const region = 'southamerica-east1'
+const region = 'us-central1'
 
 function normalizedRole(role) {
   return String(role ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
@@ -90,3 +90,11 @@ exports.updateAuthenticationUserRole = onCall({ region }, async (request) => {
 
   return { userId, role }
 })
+
+const assistant = require('./assistant')
+
+exports.listAssistantThreads = assistant.listAssistantThreads
+exports.getAssistantThread = assistant.getAssistantThread
+exports.assistantChat = assistant.assistantChat
+exports.confirmTaskProposal = assistant.confirmTaskProposal
+exports.archiveAssistantThread = assistant.archiveAssistantThread
