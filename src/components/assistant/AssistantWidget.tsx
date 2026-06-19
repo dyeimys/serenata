@@ -37,6 +37,7 @@ export function AssistantWidget() {
   const dialogRef = useRef<HTMLElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const launcherRef = useRef<HTMLButtonElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messageEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -70,7 +71,14 @@ export function AssistantWidget() {
   }, [open])
 
   useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    if (messagesContainerRef.current) {
+      const container = messagesContainerRef.current
+      const scrollToBottom = () => {
+        container.scrollTop = container.scrollHeight
+      }
+      // Usar requestAnimationFrame para garantir que o DOM foi atualizado
+      requestAnimationFrame(scrollToBottom)
+    }
   }, [messages, sending])
 
   function openAssistant() {
@@ -163,6 +171,17 @@ export function AssistantWidget() {
     }
   }
 
+  function handleComposerFocus() {
+    // Scroll para o final quando o input recebe foco (útil quando o teclado virtual abre)
+    if (messagesContainerRef.current) {
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+        }
+      }, 300) // Delay para aguardar o teclado virtual abrir
+    }
+  }
+
   return <>
     <button ref={launcherRef} className="assistant-launcher" onClick={openAssistant} aria-label="Abrir assistente de casamento" title="Assistente de casamento">
       <MessageCircle size={23} /><Sparkles className="assistant-launcher-sparkle" size={13} />
@@ -187,7 +206,8 @@ export function AssistantWidget() {
           </div>}
         </aside>
 
-        <div className="assistant-messages" aria-live="polite" aria-busy={sending || loadingThread}>
+        <div ref={messagesContainerRef} className="assistant-messages" aria-live="polite" aria-busy={sending || loadingThread}>
+          <div className="assistant-messages-spacer" />
           {loadingThread ? <div className="assistant-loading"><LoaderCircle className="assistant-spin" size={22} />Abrindo conversa...</div> : messages.length === 0 ? <AssistantWelcome onPrompt={(prompt) => void send(prompt)} /> : messages.map((message) => <Message key={message.id} message={message} threadId={threadId} />)}
           {sending && <div className="assistant-typing"><span /><span /><span /><small>Consultando o planejamento...</small></div>}
           <div ref={messageEndRef} />
@@ -198,7 +218,7 @@ export function AssistantWidget() {
         {messages.length > 0 && !sending && <div className="assistant-suggestions">{suggestions.slice(0, 3).map((prompt) => <button key={prompt} onClick={() => void send(prompt)}>{prompt}</button>)}</div>}
 
         <form className="assistant-composer" onSubmit={submit}>
-          <textarea ref={composerRef} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={composerKeyDown} maxLength={4000} rows={1} placeholder="Pergunte sobre seu casamento..." aria-label="Mensagem para o assistente" disabled={sending} />
+          <textarea ref={composerRef} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={composerKeyDown} onFocus={handleComposerFocus} maxLength={4000} rows={1} placeholder="Pergunte sobre seu casamento..." aria-label="Mensagem para o assistente" disabled={sending} />
           <button type="submit" disabled={sending || !draft.trim()} aria-label="Enviar mensagem">{sending ? <LoaderCircle className="assistant-spin" size={18} /> : <Send size={18} />}</button>
           <small>A IA pode cometer erros. Revise informações importantes.</small>
         </form>
