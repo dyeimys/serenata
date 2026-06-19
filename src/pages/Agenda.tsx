@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import { addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc, writeBatch, type Timestamp } from 'firebase/firestore'
+import { collection, onSnapshot, type Timestamp } from 'firebase/firestore'
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CheckCircle2, Clock3, ListTodo, MapPin, Plus, Trash2, X } from 'lucide-react'
+import { convertDocumentWithAudit, createDocumentWithAudit, deleteDocumentWithAudit, updateDocumentWithAudit } from '../lib/audit'
 import { db } from '../lib/firestore'
 
 type AgendaEvent = {
@@ -123,10 +124,10 @@ export function Agenda() {
     if (!db) return
     setSaving(true)
     setFormError('')
-    const payload = { ...form, title: form.title.trim(), description: form.description.trim(), location: form.location.trim(), updatedAt: serverTimestamp() }
+    const payload = { ...form, title: form.title.trim(), description: form.description.trim(), location: form.location.trim() }
     try {
-      if (editingId) await updateDoc(doc(db, 'agendaEvents', editingId), payload)
-      else await addDoc(collection(db, 'agendaEvents'), { ...payload, createdAt: serverTimestamp() })
+      if (editingId) await updateDocumentWithAudit(db, 'agendaEvents', editingId, payload)
+      else await createDocumentWithAudit(db, 'agendaEvents', payload)
       setFormOpen(false)
     } catch (caught) {
       console.error('Erro ao salvar compromisso:', caught)
@@ -136,7 +137,7 @@ export function Agenda() {
 
   async function removeEvent() {
     if (!db || !editingId || !window.confirm('Excluir este compromisso da agenda?')) return
-    try { await deleteDoc(doc(db, 'agendaEvents', editingId)); setFormOpen(false) }
+    try { await deleteDocumentWithAudit(db, 'agendaEvents', editingId); setFormOpen(false) }
     catch (caught) { console.error('Erro ao excluir compromisso:', caught); setFormError('Não foi possível excluir o compromisso.') }
   }
 
@@ -145,11 +146,7 @@ export function Agenda() {
     setSaving(true)
     setFormError('')
     try {
-      const taskReference = doc(collection(db, 'tasks'))
-      const batch = writeBatch(db)
-      batch.set(taskReference, { title: form.title.trim(), description: form.description.trim(), dueDate: form.date, status: 'todo', priority: 'medium', order: tasks.filter((task) => task.status === 'todo').length, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
-      batch.delete(doc(db, 'agendaEvents', editingId))
-      await batch.commit()
+      await convertDocumentWithAudit(db, 'agendaEvents', editingId, 'tasks', { title: form.title.trim(), description: form.description.trim(), dueDate: form.date, status: 'todo', priority: 'medium', order: tasks.filter((task) => task.status === 'todo').length })
       setFormOpen(false)
     } catch (caught) { console.error('Erro ao converter compromisso:', caught); setFormError('Não foi possível transformar este compromisso em tarefa.') }
     finally { setSaving(false) }
@@ -160,7 +157,7 @@ export function Agenda() {
     setSaving(true)
     try {
       const nextStatus = selectedTask.status === 'done' ? 'todo' : 'done'
-      await updateDoc(doc(db, 'tasks', selectedTask.id), { status: nextStatus, updatedAt: serverTimestamp() })
+      await updateDocumentWithAudit(db, 'tasks', selectedTask.id, { status: nextStatus })
       setSelectedTask({ ...selectedTask, status: nextStatus })
     } catch (caught) { console.error('Erro ao atualizar tarefa:', caught); setFormError('Não foi possível atualizar a tarefa.') }
     finally { setSaving(false) }

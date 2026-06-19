@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, onSnapshot } from 'firebase/firestore'
 import { Check, Gift, Info, MessageCircle, Save, Settings as SettingsIcon, X } from 'lucide-react'
+import { setDocumentWithAudit } from '../lib/audit'
 import { db } from '../lib/firestore'
 
 type GiftSettings = {
@@ -68,12 +69,11 @@ export function Settings() {
 
     setSaving(true)
     try {
-      await setDoc(doc(db, 'settings', 'gifts'), {
+      await setDocumentWithAudit(db, 'settings', 'gifts', {
         enableGiftConfirmation: settings.enableGiftConfirmation,
         whatsappNumber: settings.whatsappNumber.trim(),
         confirmationMessageTemplate: settings.confirmationMessageTemplate.trim(),
-        updatedAt: serverTimestamp(),
-      }, { merge: true })
+      })
       setSaved(true)
     } catch (caught) {
       console.error('Erro ao salvar configurações:', caught)

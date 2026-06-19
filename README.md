@@ -48,6 +48,7 @@ Os metadados Open Graph, Twitter Card, JSON-LD, sitemap e imagem social usam `ht
 - Login com e-mail e senha via Firebase.
 - Recuperação de senha por e-mail.
 - Persistência e observação da sessão do usuário.
+- Cadastro obrigatório do perfil no primeiro acesso.
 - Área autenticada com header, menu lateral e dashboard inicial.
 - Lista de confirmações em tempo real a partir de `rsvpSubmissions`.
 - Layout responsivo para desktop e celular.
@@ -71,6 +72,28 @@ A conta autenticada precisa ter permissão de leitura na coleção. Nas regras d
 ```text
 match /rsvpSubmissions/{submissionId} {
   allow read: if request.auth != null;
+}
+```
+
+### Perfis de usuário
+
+Cada usuário autenticado possui um documento em `users/{uid}`. O ID do documento é o mesmo UID do Firebase Authentication.
+
+```ts
+{
+  name: string
+  role: string
+  phone: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+```
+
+Use regras que permitam a cada conta acessar apenas o próprio perfil:
+
+```text
+match /users/{userId} {
+  allow read, create, update: if request.auth != null && request.auth.uid == userId;
 }
 ```
 

@@ -1,6 +1,7 @@
 import { type DragEvent, type FormEvent, useEffect, useMemo, useState } from 'react'
-import { addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc, type Timestamp } from 'firebase/firestore'
+import { collection, onSnapshot, type Timestamp } from 'firebase/firestore'
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CheckCircle2, Circle, Clock3, GripVertical, ListTodo, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { createDocumentWithAudit, deleteDocumentWithAudit, updateDocumentWithAudit } from '../lib/audit'
 import { db } from '../lib/firestore'
 
 type TaskStatus = 'todo' | 'in_progress' | 'done'
@@ -113,12 +114,12 @@ export function Tasks() {
     setSaving(true)
     setFormError('')
     try {
-      const payload = { ...form, title: form.title.trim(), description: form.description.trim(), updatedAt: serverTimestamp() }
+      const payload = { ...form, title: form.title.trim(), description: form.description.trim() }
       if (editingId) {
-        await updateDoc(doc(db, 'tasks', editingId), payload)
+        await updateDocumentWithAudit(db, 'tasks', editingId, payload)
       } else {
         const columnTasks = tasks.filter((task) => task.status === form.status)
-        await addDoc(collection(db, 'tasks'), { ...payload, order: columnTasks.length, createdAt: serverTimestamp() })
+        await createDocumentWithAudit(db, 'tasks', { ...payload, order: columnTasks.length })
       }
       setFormOpen(false)
     } catch (caught) {
@@ -133,7 +134,7 @@ export function Tasks() {
     if (!db || task.status === status) return
     const targetTasks = tasks.filter((item) => item.status === status)
     try {
-      await updateDoc(doc(db, 'tasks', task.id), { status, order: targetTasks.length, updatedAt: serverTimestamp() })
+      await updateDocumentWithAudit(db, 'tasks', task.id, { status, order: targetTasks.length })
     } catch (caught) {
       console.error('Erro ao mover tarefa:', caught)
       setError('Não foi possível mover a tarefa. Tente novamente.')
@@ -143,7 +144,7 @@ export function Tasks() {
   async function removeTask(task: Task) {
     if (!db || !window.confirm(`Excluir a tarefa “${task.title}”?`)) return
     try {
-      await deleteDoc(doc(db, 'tasks', task.id))
+      await deleteDocumentWithAudit(db, 'tasks', task.id)
     } catch (caught) {
       console.error('Erro ao excluir tarefa:', caught)
       setError('Não foi possível excluir a tarefa.')

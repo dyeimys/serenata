@@ -1,9 +1,9 @@
 import { lazy, type ReactNode, Suspense, useState } from 'react'
-import type { User } from 'firebase/auth'
 import { signOut } from 'firebase/auth'
 import { Bell, CalendarDays, ChevronRight, Gift, Heart, LayoutDashboard, ListTodo, LogOut, Menu, Settings, Users, X } from 'lucide-react'
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { auth } from '../lib/firebase'
+import type { UserProfile } from '../lib/userProfile'
 
 const Guests = lazy(async () => {
   const module = await import('./Guests')
@@ -25,7 +25,7 @@ const Overview = lazy(async () => {
   const module = await import('./Overview')
   return { default: module.Overview }
 })
-type DashboardProps = { user: User }
+type DashboardProps = { profile: UserProfile, email: string }
 
 const menuItems = [
   { label: 'Visão geral', icon: LayoutDashboard, path: '/dashboard' },
@@ -36,10 +36,10 @@ const menuItems = [
   { label: 'Configurações', icon: Settings, path: '/configuracoes' },
 ]
 
-export function Dashboard({ user }: DashboardProps) {
+export function Dashboard({ profile, email }: DashboardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const firstName = user.displayName?.split(' ')[0] || 'Organizador'
-  const initial = firstName.charAt(0).toUpperCase()
+  const firstName = profile.name.split(/\s+/)[0]
+  const initials = profile.name.split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase()
 
   return (
     <div className="app-shell">
@@ -64,8 +64,16 @@ export function Dashboard({ user }: DashboardProps) {
       <div className="app-content">
         <header className="app-header">
           <button className="menu-button" onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Menu size={23} /></button>
-          <div><p className="header-kicker">Área de gestão</p><strong>Olá, {firstName}</strong></div>
-          <div className="header-actions"><button aria-label="Notificações"><Bell size={20} /></button><div className="avatar">{initial}</div><span>{user.email}</span></div>
+          <div><p className="header-kicker">Área de gestão <span className="header-role-tag">{profile.role}</span></p><strong>Olá, {firstName}</strong></div>
+          <div className="header-actions">
+            <button aria-label="Notificações"><Bell size={20} /></button>
+            <div className="avatar" title={profile.name} aria-label={`Avatar de ${profile.name}`}>{initials}</div>
+            <div className="header-identity">
+              <strong>{profile.name}</strong>
+              <span>{profile.role}</span>
+              {email && <small>{email}</small>}
+            </div>
+          </div>
         </header>
         <Routes>
           <Route path="/dashboard" element={<LazyPage><Overview /></LazyPage>} />

@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import { addDoc, collection, doc, onSnapshot, serverTimestamp, updateDoc, type Timestamp } from 'firebase/firestore'
+import { collection, onSnapshot, type Timestamp } from 'firebase/firestore'
 import { Check, ExternalLink, Gift, Image, PackageCheck, Pencil, Plus, Search, X } from 'lucide-react'
+import { createDocumentWithAudit, updateDocumentWithAudit } from '../lib/audit'
 import { db } from '../lib/firestore'
 
 type GiftItem = {
@@ -152,14 +153,13 @@ export function Gifts() {
       productLink: normalizeUrl(form.productLink),
       received: form.received,
       disabled: form.disabled,
-      updatedAt: serverTimestamp(),
     }
 
     try {
       if (editingId) {
-        await updateDoc(doc(db, 'giftRegistryItems', editingId), payload)
+        await updateDocumentWithAudit(db, 'giftRegistryItems', editingId, payload)
       } else {
-        await addDoc(collection(db, 'giftRegistryItems'), { ...payload, createdAt: serverTimestamp() })
+        await createDocumentWithAudit(db, 'giftRegistryItems', payload)
       }
       setFormOpen(false)
     } catch (caught) {
@@ -173,7 +173,7 @@ export function Gifts() {
   async function updateFlag(item: GiftItem, field: 'received' | 'disabled', value: boolean) {
     if (!db) return
     try {
-      await updateDoc(doc(db, 'giftRegistryItems', item.id), { [field]: value, updatedAt: serverTimestamp() })
+      await updateDocumentWithAudit(db, 'giftRegistryItems', item.id, { [field]: value })
     } catch (caught) {
       console.error('Erro ao atualizar presente:', caught)
       setError('Não foi possível atualizar o presente. Verifique sua permissão.')
