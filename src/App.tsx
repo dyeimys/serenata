@@ -3,13 +3,23 @@ import type { User } from 'firebase/auth'
 import { onAuthStateChanged } from 'firebase/auth'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { auth, isFirebaseConfigured } from './lib/firebase'
+import { installAutomaticTracking, trackPageView } from './lib/analytics'
 import { Dashboard } from './pages/Dashboard'
 import { Login } from './pages/Login'
 import './App.css'
 
 function App() {
+  const location = useLocation()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(Boolean(auth))
+
+  useEffect(() => {
+    installAutomaticTracking()
+  }, [])
+
+  useEffect(() => {
+    trackPageView(location.pathname)
+  }, [location.pathname])
 
   useEffect(() => {
     if (!auth) {
