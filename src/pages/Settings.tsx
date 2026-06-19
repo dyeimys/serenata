@@ -1,6 +1,6 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
-import { Check, Gift, Info, MessageCircle, Save, Settings as SettingsIcon, Users, X } from 'lucide-react'
+import { Bold, Check, Code2, ExternalLink, Gift, Info, Italic, MessageCircle, Save, Settings as SettingsIcon, Strikethrough, Users, X } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { setDocumentWithAudit } from '../lib/audit'
 import { db } from '../lib/firestore'
@@ -21,6 +21,34 @@ const defaultSettings: GiftSettings = {
 const giftSettingsHash = '#lista-de-presentes'
 const userSettingsHash = '#gestao-de-usuarios'
 
+const whatsappFormats = [
+  { label: 'Negrito', prefix: '*', suffix: '*', icon: Bold },
+  { label: 'Itálico', prefix: '_', suffix: '_', icon: Italic },
+  { label: 'Tachado', prefix: '~', suffix: '~', icon: Strikethrough },
+  { label: 'Monoespaçado', prefix: '```', suffix: '```', icon: Code2 },
+]
+
+function renderWhatsappText(text: string, keyPrefix = 'message'): ReactNode[] {
+  const markerPattern = /(```[\s\S]+?```|\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~)/g
+  const nodes: ReactNode[] = []
+  let lastIndex = 0
+
+  for (const match of text.matchAll(markerPattern)) {
+    const index = match.index ?? 0
+    if (index > lastIndex) nodes.push(text.slice(lastIndex, index))
+    const value = match[0]
+    const key = `${keyPrefix}-${index}`
+    if (value.startsWith('```')) nodes.push(<code key={key}>{value.slice(3, -3)}</code>)
+    else if (value.startsWith('*')) nodes.push(<strong key={key}>{renderWhatsappText(value.slice(1, -1), key)}</strong>)
+    else if (value.startsWith('_')) nodes.push(<em key={key}>{renderWhatsappText(value.slice(1, -1), key)}</em>)
+    else nodes.push(<s key={key}>{renderWhatsappText(value.slice(1, -1), key)}</s>)
+    lastIndex = index + value.length
+  }
+
+  if (lastIndex < text.length) nodes.push(text.slice(lastIndex))
+  return nodes
+}
+
 export function Settings() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -30,6 +58,7 @@ export function Settings() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const messageTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (!db) return
@@ -64,6 +93,31 @@ export function Settings() {
 
   const preview = useMemo(() => settings.confirmationMessageTemplate.replaceAll('{item}', 'Soprador de folhas'), [settings.confirmationMessageTemplate])
   const hasItemPlaceholder = settings.confirmationMessageTemplate.includes('{item}')
+
+  function applyWhatsappFormat(prefix: string, suffix: string) {
+    const textarea = messageTextareaRef.current
+    if (!textarea) return
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const message = settings.confirmationMessageTemplate
+    const nextMessage = `${message.slice(0, start)}${prefix}${message.slice(start, end)}${suffix}${message.slice(end)}`
+    setSettings({ ...settings, confirmationMessageTemplate: nextMessage })
+    requestAnimationFrame(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + prefix.length, end + prefix.length)
+    })
+  }
+
+  function testOnWhatsapp() {
+    const phone = settings.whatsappNumber.replace(/\D/g, '')
+    if (!phone) {
+      setError('Informe o número do WhatsApp antes de testar a mensagem.')
+      return
+    }
+    setError('')
+    const message = settings.confirmationMessageTemplate.replaceAll('{item}', 'Soprador de folhas')
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -130,13 +184,20 @@ export function Settings() {
 
             <div className="setting-field">
               <div className="setting-label-row"><label htmlFor="message-template">Mensagem de confirmação</label><span>{settings.confirmationMessageTemplate.length} caracteres</span></div>
-              <textarea id="message-template" rows={5} value={settings.confirmationMessageTemplate} onChange={(event) => setSettings({ ...settings, confirmationMessageTemplate: event.target.value })} required />
+              <div className="message-editor">
+                <div className="message-toolbar" role="toolbar" aria-label="Formatação da mensagem">
+                  {whatsappFormats.map(({ label, prefix, suffix, icon: Icon }) => <button key={label} type="button" title={label} aria-label={label} onMouseDown={(event) => event.preventDefault()} onClick={() => applyWhatsappFormat(prefix, suffix)}><Icon size={16} /></button>)}
+                  <span aria-hidden="true" />
+                  <button className="test-whatsapp-button" type="button" onClick={testOnWhatsapp}><ExternalLink size={15} />Testar no WhatsApp</button>
+                </div>
+                <textarea ref={messageTextareaRef} id="message-template" rows={5} value={settings.confirmationMessageTemplate} onChange={(event) => setSettings({ ...settings, confirmationMessageTemplate: event.target.value })} required />
+              </div>
               <div className={`placeholder-hint ${hasItemPlaceholder ? 'valid' : 'invalid'}`}>{hasItemPlaceholder ? <Check size={13} /> : <X size={13} />}Use <code>{'{item}'}</code> no ponto onde o nome do presente deve aparecer.</div>
             </div>
 
             <div className="message-preview">
               <div className="preview-title"><MessageCircle size={15} /><span>Prévia da mensagem</span></div>
-              <div className="message-bubble">{preview || 'A mensagem será exibida aqui.'}<span>15:42 <Check size={11} /></span></div>
+              <div className="message-bubble"><div>{preview ? renderWhatsappText(preview) : 'A mensagem será exibida aqui.'}</div><span>15:42 <Check size={11} /></span></div>
             </div>
 
             <div className="settings-info"><Info size={16} /><p>O frontend poderá ler este documento e substituir <code>{'{item}'}</code> pelo título do presente selecionado antes de abrir o WhatsApp.</p></div>
