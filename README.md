@@ -97,6 +97,18 @@ match /users/{userId} {
 }
 ```
 
+### Gestão de usuários
+
+A aba **Configurações > Gestão de usuários** consulta o Firebase Authentication pelas Cloud Functions `listAuthenticationUsers` e `updateAuthenticationUserRole`. Usuários autenticados podem consultar as contas; apenas perfis com papel `Noivo`, `Noiva`, `Assessor` ou `Assessor(a)` podem alterar o papel de outros usuários. A autorização é validada novamente no servidor.
+
+Para publicar os endpoints administrativos:
+
+```bash
+firebase deploy --only functions
+```
+
+O projeto Firebase precisa estar no plano Blaze para publicar Cloud Functions.
+
 ### Lista de presentes
 
 Os presentes são armazenados na coleção `giftRegistryItems` com este formato:

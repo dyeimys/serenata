@@ -1,8 +1,10 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
-import { Check, Gift, Info, MessageCircle, Save, Settings as SettingsIcon, X } from 'lucide-react'
+import { Check, Gift, Info, MessageCircle, Save, Settings as SettingsIcon, Users, X } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { setDocumentWithAudit } from '../lib/audit'
 import { db } from '../lib/firestore'
+import { UserManagement } from './UserManagement'
 
 type GiftSettings = {
   enableGiftConfirmation: boolean
@@ -16,7 +18,13 @@ const defaultSettings: GiftSettings = {
   confirmationMessageTemplate: 'Oi! Tudo bem? Com muito carinho, quero presentear voces com {item}. Podem deixar que esse mimo ja esta por minha conta.',
 }
 
+const giftSettingsHash = '#lista-de-presentes'
+const userSettingsHash = '#gestao-de-usuarios'
+
 export function Settings() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const activeTab = location.hash === userSettingsHash ? 'users' : 'gifts'
   const [settings, setSettings] = useState<GiftSettings>(defaultSettings)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -48,6 +56,11 @@ export function Settings() {
       },
     )
   }, [])
+
+  useEffect(() => {
+    if (location.hash === giftSettingsHash || location.hash === userSettingsHash) return
+    void navigate({ pathname: location.pathname, search: location.search, hash: giftSettingsHash }, { replace: true })
+  }, [location.hash, location.pathname, location.search, navigate])
 
   const preview = useMemo(() => settings.confirmationMessageTemplate.replaceAll('{item}', 'Soprador de folhas'), [settings.confirmationMessageTemplate])
   const hasItemPlaceholder = settings.confirmationMessageTemplate.includes('{item}')
@@ -92,10 +105,11 @@ export function Settings() {
       <div className="settings-layout">
         <aside className="settings-tabs" aria-label="Seções de configuração">
           <p>Configurações</p>
-          <button className="active"><Gift size={17} /><span>Lista de presentes<small>Confirmação via WhatsApp</small></span></button>
+          <Link to={{ pathname: location.pathname, search: location.search, hash: giftSettingsHash }} className={activeTab === 'gifts' ? 'active' : ''} aria-current={activeTab === 'gifts' ? 'page' : undefined}><Gift size={17} /><span>Lista de presentes<small>Confirmação via WhatsApp</small></span></Link>
+          <Link to={{ pathname: location.pathname, search: location.search, hash: userSettingsHash }} className={activeTab === 'users' ? 'active' : ''} aria-current={activeTab === 'users' ? 'page' : undefined}><Users size={17} /><span>Gestão de usuários<small>Acessos e papéis</small></span></Link>
         </aside>
 
-        <section className="settings-card">
+        {activeTab === 'gifts' ? <section className="settings-card">
           <div className="settings-card-header"><span><Gift size={20} /></span><div><h2>Lista de presentes</h2><p>Defina como os convidados confirmam a escolha de um presente.</p></div></div>
 
           {loading ? <div className="list-state"><span className="spinner spinner--wine" />Carregando configurações...</div> : <form className="settings-form" onSubmit={handleSubmit}>
@@ -131,7 +145,7 @@ export function Settings() {
 
             <div className="settings-footer"><span><SettingsIcon size={14} />Documento: settings/gifts</span><button className="compact-primary" type="submit" disabled={saving}>{saving ? <span className="spinner" /> : <><Save size={15} />Salvar configurações</>}</button></div>
           </form>}
-        </section>
+        </section> : <UserManagement />}
       </div>
     </main>
   )
