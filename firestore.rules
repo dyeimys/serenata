@@ -6,6 +6,26 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function userRole() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : '';
+    }
+
+    function canManageGiftDeletion() {
+      return userRole() in [
+        'Noivo',
+        'Noiva',
+        'Assessor',
+        'Assessora',
+        'Assessor(a)',
+        'Cerimonialista',
+        'planner',
+        'bride',
+        'groom'
+      ];
+    }
+
     match /users/{userId} {
       allow read, create, update: if signedIn() && request.auth.uid == userId;
       allow delete: if false;
@@ -18,7 +38,9 @@ service cloud.firestore {
     }
 
     match /giftRegistryItems/{giftId} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if signedIn() && canManageGiftDeletion() && resource.data.disabled == true;
     }
 
     match /tasks/{taskId} {

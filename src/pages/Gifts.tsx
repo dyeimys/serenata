@@ -1,7 +1,8 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { FirebaseError } from 'firebase/app'
 import { collection, onSnapshot, type Timestamp } from 'firebase/firestore'
-import { Check, ExternalLink, Gift, Image, PackageCheck, Pencil, Plus, Search, X } from 'lucide-react'
-import { createDocumentWithAudit, updateDocumentWithAudit } from '../lib/audit'
+import { AlertTriangle, Check, ExternalLink, Gift, Image, PackageCheck, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { createDocumentWithAudit, deleteDocumentWithAudit, updateDocumentWithAudit } from '../lib/audit'
 import { db } from '../lib/firestore'
 
 type GiftItem = {
@@ -59,6 +60,9 @@ export function Gifts() {
   const [form, setForm] = useState<GiftForm>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<GiftItem | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
     if (!db) return
@@ -180,6 +184,37 @@ export function Gifts() {
     }
   }
 
+  function openDeleteModal(item: GiftItem) {
+    if (!item.disabled) return
+    setDeleteTarget(item)
+    setDeleteError('')
+  }
+
+  function closeDeleteModal() {
+    if (deleting) return
+    setDeleteTarget(null)
+    setDeleteError('')
+  }
+
+  async function confirmDelete() {
+    if (!db || !deleteTarget || !deleteTarget.disabled) return
+    setDeleting(true)
+    setDeleteError('')
+
+    try {
+      await deleteDocumentWithAudit(db, 'giftRegistryItems', deleteTarget.id)
+      setDeleteTarget(null)
+    } catch (caught) {
+      console.error('Erro ao excluir presente:', caught)
+      const code = caught instanceof FirebaseError ? caught.code : ''
+      setDeleteError(code.includes('permission-denied')
+        ? 'Seu papel não permite excluir este item. Verifique as regras do Firebase.'
+        : 'Não foi possível excluir este item agora.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <main className="dashboard-content gifts-page">
       <div className="dashboard-title gifts-title">
@@ -220,12 +255,22 @@ export function Gifts() {
               <div className="gift-card-actions">
                 <button className={item.received ? 'selected' : ''} onClick={() => updateFlag(item, 'received', !item.received)}><PackageCheck size={15} />{item.received ? 'Recebido' : 'Marcar recebido'}</button>
                 <button className={item.disabled ? 'selected danger' : ''} onClick={() => updateFlag(item, 'disabled', !item.disabled)}>{item.disabled ? 'Reativar' : 'Desabilitar'}</button>
+                {item.disabled && <button className="danger" onClick={() => openDeleteModal(item)}><Trash2 size={15} />Apagar</button>}
               </div>
               {item.productLink && <a href={item.productLink} target="_blank" rel="noreferrer">Ver produto <ExternalLink size={12} /></a>}
             </div>
           </article>)}
         </section>
       )}
+
+      {deleteTarget && <div className="gift-form-layer gift-delete-layer" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDeleteModal() }}>
+        <section className="gift-delete-modal" role="dialog" aria-modal="true" aria-labelledby="gift-delete-title" aria-describedby="gift-delete-description">
+          <div className="gift-delete-head"><AlertTriangle size={18} /><h2 id="gift-delete-title">Excluir item desabilitado</h2></div>
+          <p id="gift-delete-description">Tem certeza que deseja excluir <strong>{deleteTarget.title}</strong>? Esta ação é permanente.</p>
+          {deleteError && <p className="form-message form-message--error" role="alert">{deleteError}</p>}
+          <div className="gift-delete-actions"><button type="button" onClick={closeDeleteModal} disabled={deleting}>Cancelar</button><button className="compact-primary compact-primary--danger" type="button" onClick={() => void confirmDelete()} disabled={deleting}>{deleting ? <span className="spinner" /> : <><Trash2 size={14} />Sim, excluir</>}</button></div>
+        </section>
+      </div>}
 
       {formOpen && <div className="gift-form-layer" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeForm() }}>
         <section className="gift-form-panel" role="dialog" aria-modal="true" aria-labelledby="gift-form-title">

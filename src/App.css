@@ -181,3 +181,72 @@ form label { display: block; color: #4c383a; font-size: 12px; font-weight: 600; 
   /* Melhorar scroll no mobile */
   .assistant-messages { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 }
+
+/* Exclusao de presentes desabilitados */
+.gift-card-actions button.danger {
+  border-color: #ddc9c7;
+  color: #80454a;
+  background: #f7e9e7;
+}
+
+.gift-delete-layer {
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.gift-delete-modal {
+  width: min(460px, 100%);
+  padding: 22px;
+  border: 1px solid var(--line);
+  background: #fff;
+  box-shadow: 0 20px 55px rgba(51, 25, 28, .24);
+}
+
+.gift-delete-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8f4349;
+}
+
+.gift-delete-head h2 {
+  margin: 0;
+  font: 600 24px 'Cormorant Garamond', serif;
+}
+
+.gift-delete-modal > p {
+  margin: 14px 0 0;
+  color: #6d585a;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.gift-delete-modal > .form-message {
+  margin-bottom: 0;
+}
+
+.gift-delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.gift-delete-actions > button:first-child {
+  min-height: 40px;
+  padding: 0 15px;
+  border: 1px solid var(--line);
+  color: #836f70;
+  background: transparent;
+  font-size: 10px;
+}
+
+.compact-primary--danger {
+  background: #8a3b42;
+}
+
+.compact-primary--danger:hover {
+  background: #733137;
+}
+
