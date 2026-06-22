@@ -494,6 +494,47 @@ form label { display: block; color: #4c383a; font-size: 12px; font-weight: 600; 
   color: #4f765b;
 }
 
+.guest-info-button {
+  width: auto;
+  height: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  margin-right: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--wine);
+  background: transparent;
+  line-height: 0;
+}
+
+.guest-archived-list {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.guest-archived-item {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.guest-archived-item strong {
+  color: #4f3b3d;
+  font-size: 11px;
+}
+
+.guest-archived-item small {
+  color: #725d5e;
+  font-size: 8px;
+}
+
 @media (max-width: 700px) {
   .guest-duplicate-actions {
     flex-direction: column;

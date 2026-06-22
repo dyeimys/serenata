@@ -392,6 +392,13 @@ exports.consolidateRsvpDuplicates = onCall({ region, timeoutSeconds: 120, cors: 
     throw new HttpsError('invalid-argument', 'Selecione ao menos dois envios para arquivar como duplicados.')
   }
 
+   const sourceReferences = archiveIds.map((submissionId) => db.doc(`rsvpSubmissions/${submissionId}`))
+   const sourceSnapshots = await Promise.all(sourceReferences.map((reference) => reference.get()))
+   const missingArchiveIds = sourceSnapshots.filter((snapshot) => !snapshot.exists).map((snapshot) => snapshot.id)
+   if (missingArchiveIds.length) {
+     throw new HttpsError('failed-precondition', 'Um ou mais envios selecionados nao existem mais. Atualize a tela e tente novamente.')
+   }
+
    const batch = db.batch()
    const canonicalReference = db.collection('rsvpSubmissions').doc()
 
@@ -413,18 +420,20 @@ exports.consolidateRsvpDuplicates = onCall({ region, timeoutSeconds: 120, cors: 
        createdByEmail: requester.auth.token.email ?? '',
      }, { merge: true })
 
-     archiveIds.forEach((submissionId) => {
-       const reference = db.doc(`rsvpSubmissions/${submissionId}`)
-       batch.set(reference, {
-         consolidationStatus: 'archived_duplicate',
-         duplicateOfSubmissionId: canonicalReference.id,
-         duplicateGroupKey: group.key,
-         excludedFromMetrics: true,
+     sourceSnapshots.forEach((snapshot) => {
+       const archiveReference = db.collection('rsvpSubmissionsArchive').doc()
+       batch.set(archiveReference, {
+         ...(snapshot.data() || {}),
+         originalSubmissionId: snapshot.id,
          archivedAt: FieldValue.serverTimestamp(),
-         updatedAt: FieldValue.serverTimestamp(),
-         updatedByUserId: requester.auth.uid,
-         updatedByEmail: requester.auth.token.email ?? '',
-       }, { merge: true })
+         archivedByUserId: requester.auth.uid,
+         archivedByEmail: requester.auth.token.email ?? '',
+         archiveReason: 'manual_duplicate_consolidation',
+         duplicateGroupKey: group.key,
+         replacedBySubmissionId: canonicalReference.id,
+         consolidationRunId: runId,
+       }, { merge: false })
+       batch.delete(snapshot.ref)
      })
 
      await batch.commit()

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collection, doc, onSnapshot, orderBy, query, type Timestamp } from 'firebase/firestore'
-import { AlertTriangle, Baby, Check, ChevronDown, Search, UserRound, Users, X } from 'lucide-react'
+import { collection, doc, getDocs, onSnapshot, orderBy, query, where, type Timestamp } from 'firebase/firestore'
+import { AlertTriangle, Baby, Check, ChevronDown, Info, Search, UserRound, Users, X } from 'lucide-react'
 import { db } from '../lib/firestore'
 import { isRsvpConfirmed } from '../lib/rsvp'
 import { consolidateRsvpDuplicates, type RsvpConsolidationSnapshot } from '../lib/rsvpConsolidation'
@@ -13,6 +13,7 @@ type RsvpSubmission = {
   createdAt: Timestamp | null
   excludedFromMetrics: boolean
   consolidationStatus: string
+  consolidatedFromSubmissionIds: string[]
   name: string
   phone: string
   totalGuests: number
@@ -26,6 +27,20 @@ type ConsolidationForm = {
   adults: number
   children: number
   attending: boolean
+}
+
+type ArchivedSubmission = {
+  id: string
+  originalSubmissionId: string
+  name: string
+  phone: string
+  adults: number
+  children: number
+  totalGuests: number
+  attending?: boolean
+  consolidationStatus: string
+  createdAt: Timestamp | null
+  archivedAt: Timestamp | null
 }
 
 function formatDate(timestamp: Timestamp | null) {
@@ -50,6 +65,13 @@ export function Guests() {
   const [duplicateAlertCollapsed, setDuplicateAlertCollapsed] = useState(true)
   const [selectedGroupKey, setSelectedGroupKey] = useState('')
   const [selectedArchiveIds, setSelectedArchiveIds] = useState<string[]>([])
+  const [archivedItemsModal, setArchivedItemsModal] = useState<{
+    submissionId: string
+    expectedIds: string[]
+    loading: boolean
+    error: string
+    items: ArchivedSubmission[]
+  } | null>(null)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [form, setForm] = useState<ConsolidationForm>({ name: '', phone: '', adults: 0, children: 0, attending: true })
@@ -71,6 +93,9 @@ export function Guests() {
             createdAt: data.createdAt ?? null,
             excludedFromMetrics: data.excludedFromMetrics === true,
             consolidationStatus: String(data.consolidationStatus ?? ''),
+            consolidatedFromSubmissionIds: Array.isArray(data.consolidatedFromSubmissionIds)
+              ? data.consolidatedFromSubmissionIds.map((value: unknown) => String(value)).filter(Boolean)
+              : [],
             name: String(data.name ?? 'Nome não informado'),
             phone: String(data.phone ?? 'Não informado'),
             totalGuests: Number(data.totalGuests) || 0,
@@ -216,6 +241,60 @@ export function Guests() {
       : [...current, submissionId])
   }
 
+  async function openArchivedItemsModal(submission: RsvpSubmission) {
+    setArchivedItemsModal({
+      submissionId: submission.id,
+      expectedIds: submission.consolidatedFromSubmissionIds,
+      loading: true,
+      error: '',
+      items: [],
+    })
+
+    if (!db) {
+      setArchivedItemsModal((current) => current
+        ? { ...current, loading: false, error: 'Banco de dados não configurado.' }
+        : current)
+      return
+    }
+
+    try {
+      const archivedQuery = query(
+        collection(db, 'rsvpSubmissionsArchive'),
+        where('replacedBySubmissionId', '==', submission.id),
+      )
+      const snapshot = await getDocs(archivedQuery)
+      const items = snapshot.docs.map((document) => {
+        const data = document.data()
+        return {
+          id: document.id,
+          originalSubmissionId: String(data.originalSubmissionId ?? ''),
+          name: String(data.name ?? 'Nome não informado'),
+          phone: String(data.phone ?? 'Não informado'),
+          adults: Number(data.adults) || 0,
+          children: Number(data.children) || 0,
+          totalGuests: Number(data.totalGuests) || 0,
+          attending: typeof data.attending === 'boolean' ? data.attending : undefined,
+          consolidationStatus: String(data.consolidationStatus ?? ''),
+          createdAt: data.createdAt ?? null,
+          archivedAt: data.archivedAt ?? null,
+        } as ArchivedSubmission
+      }).sort((a, b) => (b.archivedAt?.toMillis?.() ?? 0) - (a.archivedAt?.toMillis?.() ?? 0))
+
+      setArchivedItemsModal((current) => current
+        ? { ...current, loading: false, items }
+        : current)
+    } catch (caught) {
+      console.error('Erro ao carregar itens arquivados:', caught)
+      setArchivedItemsModal((current) => current
+        ? { ...current, loading: false, error: 'Não foi possível carregar os itens arquivados agora.' }
+        : current)
+    }
+  }
+
+  function closeArchivedItemsModal() {
+    setArchivedItemsModal(null)
+  }
+
    function duplicateReasonLabel(group: NonNullable<RsvpConsolidationSnapshot>['groups'][number]): string {
      if ((group.reason as any) === 'name_phone') return 'Mesmo nome e telefone'
      if (group.reason === 'name') return 'Mesmo nome'
@@ -308,8 +387,9 @@ export function Guests() {
               <tbody>{visibleSubmissions.map((submission) => {
                 const confirmed = isRsvpConfirmed(submission)
                 const isPossibleDuplicate = duplicateIdSet.has(submission.id)
+                const hasArchivedItems = submission.consolidationStatus === 'manual_canonical' && submission.consolidatedFromSubmissionIds.length > 0
                 return <tr key={submission.id} className={isPossibleDuplicate ? 'guest-row--possible-duplicate' : undefined}>
-                  <td data-label="Convidado"><span className="guest-avatar">{submission.name.charAt(0).toUpperCase()}</span><div><strong>{submission.name}</strong><small>ID: {submission.id}</small></div></td>
+                  <td data-label="Convidado"><span className="guest-avatar">{submission.name.charAt(0).toUpperCase()}</span><div><strong>{submission.name}{hasArchivedItems && <button type="button" className="guest-info-button" onClick={() => void openArchivedItemsModal(submission)} aria-label="Ver informações dos itens arquivados" title="Ver informações dos itens arquivados"><Info size={12} /></button>}</strong><small>ID: {submission.id}</small></div></td>
                   <td data-label="Contato">{submission.phone}</td>
                   <td data-label="Adultos">{submission.adults}</td>
                   <td data-label="Crianças">{submission.children}</td>
@@ -346,6 +426,20 @@ export function Guests() {
           </div>
           {consolidationError && <p className="form-message form-message--error" role="alert">{consolidationError}</p>}
           <div className="gift-delete-actions"><button type="button" onClick={closeConsolidationForm} disabled={consolidating}>Cancelar</button><button className="compact-primary" type="button" onClick={() => void submitManualConsolidation()} disabled={consolidating}>{consolidating ? <span className="spinner" /> : 'Criar e arquivar selecionados'}</button></div>
+        </section>
+      </div>}
+
+      {archivedItemsModal && <div className="gift-form-layer" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeArchivedItemsModal() }}>
+        <section className="gift-delete-modal" role="dialog" aria-modal="true" aria-labelledby="guest-archived-items-title">
+          <div className="gift-delete-head"><AlertTriangle size={18} /><h2 id="guest-archived-items-title">Itens arquivados</h2></div>
+          <p>Registro manual: <strong>{archivedItemsModal.submissionId}</strong></p>
+          {archivedItemsModal.loading && <div className="list-state"><span className="spinner spinner--wine" />Carregando informações completas...</div>}
+          {archivedItemsModal.error && <p className="form-message form-message--error" role="alert">{archivedItemsModal.error}</p>}
+          {!archivedItemsModal.loading && !archivedItemsModal.error && archivedItemsModal.items.length === 0 && <div className="list-state"><strong>Nenhum item arquivado encontrado</strong><p>IDs esperados: {archivedItemsModal.expectedIds.join(', ') || 'nenhum'}.</p></div>}
+          {!archivedItemsModal.loading && !archivedItemsModal.error && archivedItemsModal.items.length > 0 && <div className="guest-archived-list" aria-label="Lista de registros arquivados">
+            {archivedItemsModal.items.map((item) => <article key={item.id} className="guest-archived-item"><strong>{item.name}</strong><small>Arquivo: {item.id}</small><small>Original: {item.originalSubmissionId || 'Não informado'}</small><small>Telefone: {item.phone || 'Não informado'}</small><small>Convidados: {item.adults} adultos, {item.children} crianças ({item.totalGuests} total)</small><small>Resposta: {item.attending === false ? 'Recusou' : 'Confirmou'}</small><small>Status: {item.consolidationStatus || 'Não informado'}</small><small>Enviado em: {formatDate(item.createdAt)}</small><small>Arquivado em: {formatDate(item.archivedAt)}</small></article>)}
+          </div>}
+          <div className="gift-delete-actions"><button type="button" onClick={closeArchivedItemsModal}>Fechar</button></div>
         </section>
       </div>}
     </main>
