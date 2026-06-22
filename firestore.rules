@@ -37,6 +37,16 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /rsvpConsolidation/{docId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /rsvpConsolidationHistory/{historyId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     match /giftRegistryItems/{giftId} {
       allow read: if signedIn();
       allow create, update: if signedIn();

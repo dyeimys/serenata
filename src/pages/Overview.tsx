@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collection, onSnapshot, type Timestamp } from 'firebase/firestore'
+import { collection, doc, onSnapshot, type Timestamp } from 'firebase/firestore'
 import { AlertTriangle, CheckCircle2, Gift, Heart, ListTodo, PackageCheck, Users, X } from 'lucide-react'
 import { db } from '../lib/firestore'
 import { isRsvpConfirmed } from '../lib/rsvp'
@@ -23,6 +23,7 @@ export function Overview() {
   const [loaded, setLoaded] = useState({ rsvps: false, gifts: false, tasks: false })
   const [errors, setErrors] = useState<string[]>([])
   const [period, setPeriod] = useState<Period>(7)
+  const [hasRsvpDuplicates, setHasRsvpDuplicates] = useState(false)
 
   useEffect(() => {
     if (!db) return
@@ -53,7 +54,13 @@ export function Overview() {
       setLoaded((current) => ({ ...current, tasks: true }))
     }, (caught) => reportError('tasks', caught))
 
-    return () => { unsubscribeRsvps(); unsubscribeGifts(); unsubscribeTasks() }
+    const unsubscribeConsolidation = onSnapshot(doc(db, 'rsvpConsolidation', 'current'), (snapshot) => {
+      setHasRsvpDuplicates(snapshot.exists() && snapshot.data().hasDuplicates === true)
+    }, () => {
+      setHasRsvpDuplicates(false)
+    })
+
+    return () => { unsubscribeRsvps(); unsubscribeGifts(); unsubscribeTasks(); unsubscribeConsolidation() }
   }, [])
 
   const metrics = useMemo(() => {
@@ -104,7 +111,7 @@ export function Overview() {
     {errors.length > 0 && <div className="overview-alert"><X size={15} />Alguns indicadores não puderam ser carregados. Verifique as permissões de: {errors.join(', ')}.</div>}
 
     <section className="overview-kpis" aria-label="Indicadores principais">
-      <article><span className="kpi-icon"><Users size={20} /></span><div><p>Presenças confirmadas</p><strong>{loading || !hasRsvps ? '—' : metrics.confirmedGuests}</strong><small>{!loading && !hasRsvps ? 'Nenhuma resposta recebida' : `${metrics.adults} adultos e ${metrics.children} crianças`}</small></div></article>
+      <article className={hasRsvpDuplicates ? 'kpi-warning' : ''}><span className="kpi-icon">{hasRsvpDuplicates ? <AlertTriangle size={20} /> : <Users size={20} />}</span><div><p>Presenças confirmadas</p><strong>{loading || !hasRsvps ? '—' : metrics.confirmedGuests}</strong><small>{hasRsvpDuplicates ? 'Há possíveis duplicidades para revisar em Convidados' : !loading && !hasRsvps ? 'Nenhuma resposta recebida' : `${metrics.adults} adultos e ${metrics.children} crianças`}</small></div></article>
       <article><span className="kpi-icon"><Gift size={20} /></span><div><p>Presentes disponíveis</p><strong>{loading || !hasGifts ? '—' : metrics.availableGifts}</strong><small>{!loading && !hasGifts ? 'Nenhum presente cadastrado' : `${metrics.receivedGifts} já recebidos`}</small></div></article>
       <article><span className="kpi-icon"><ListTodo size={20} /></span><div><p>Progresso das tarefas</p><strong>{loading || !hasTasks ? '—' : `${metrics.taskProgress}%`}</strong><small>{!loading && !hasTasks ? 'Nenhuma tarefa cadastrada' : `${metrics.completedTasks} de ${tasks.length} concluídas`}</small></div></article>
       <article className={metrics.overdueTasks ? 'kpi-warning' : ''}><span className="kpi-icon"><AlertTriangle size={20} /></span><div><p>Tarefas vencidas</p><strong>{loading || !hasTasks ? '—' : metrics.overdueTasks}</strong><small>{!loading && !hasTasks ? 'Sem dados de tarefas' : `${metrics.inProgressTasks} em andamento`}</small></div></article>
