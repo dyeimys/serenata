@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { collection, doc, getDocs, onSnapshot, orderBy, query, where, type Timestamp } from 'firebase/firestore'
-import { AlertTriangle, Baby, Check, ChevronDown, Info, Search, UserRound, Users, X } from 'lucide-react'
+import { jsPDF } from 'jspdf'
+import { AlertTriangle, Baby, Check, ChevronDown, Download, Info, Search, UserRound, Users, X } from 'lucide-react'
 import { db } from '../lib/firestore'
 import { isRsvpConfirmed } from '../lib/rsvp'
 import { consolidateRsvpDuplicates, type RsvpConsolidationSnapshot } from '../lib/rsvpConsolidation'
@@ -43,6 +44,15 @@ type ArchivedSubmission = {
   archivedAt: Timestamp | null
 }
 
+type WeddingProfile = {
+  coupleNames: string[]
+  weddingDate: string
+  ceremonyTime: string
+  city: string
+  state: string
+  venue: string
+}
+
 function formatDate(timestamp: Timestamp | null) {
   if (!timestamp) return 'Data não informada'
   return new Intl.DateTimeFormat('pt-BR', {
@@ -52,6 +62,40 @@ function formatDate(timestamp: Timestamp | null) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(timestamp.toDate())
+}
+
+function formatIsoDate(value: string) {
+  const [year, month, day] = value.split('-')
+  if (!year || !month || !day) return value
+  return `${day}/${month}/${year}`
+}
+
+function toUpperPtBr(value: string) {
+  return value.trim().toLocaleUpperCase('pt-BR')
+}
+
+function formatZeroAsDash(value: number) {
+  return value === 0 ? '-' : String(value)
+}
+
+async function loadImageDataUrl(path: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const image = new window.Image()
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = image.width
+      canvas.height = image.height
+      const context = canvas.getContext('2d')
+      if (!context) {
+        resolve(null)
+        return
+      }
+      context.drawImage(image, 0, 0)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    image.onerror = () => resolve(null)
+    image.src = path
+  })
 }
 
 export function Guests() {
@@ -75,6 +119,9 @@ export function Guests() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [form, setForm] = useState<ConsolidationForm>({ name: '', phone: '', adults: 0, children: 0, attending: true })
+  const [weddingProfile, setWeddingProfile] = useState<WeddingProfile | null>(null)
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportError, setExportError] = useState('')
 
   useEffect(() => {
     if (!db) return
@@ -112,6 +159,25 @@ export function Guests() {
         setLoading(false)
       },
     )
+  }, [])
+
+  useEffect(() => {
+    if (!db) return
+    return onSnapshot(doc(db, 'settings', 'weddingProfile'), (snapshot) => {
+      if (!snapshot.exists()) {
+        setWeddingProfile(null)
+        return
+      }
+      const data = snapshot.data()
+      setWeddingProfile({
+        coupleNames: Array.isArray(data.coupleNames) ? data.coupleNames.map((value: unknown) => String(value)).filter(Boolean) : [],
+        weddingDate: String(data.weddingDate ?? ''),
+        ceremonyTime: String(data.ceremonyTime ?? ''),
+        city: String(data.city ?? ''),
+        state: String(data.state ?? ''),
+        venue: String(data.venue ?? ''),
+      })
+    })
   }, [])
 
   useEffect(() => {
@@ -202,6 +268,7 @@ export function Guests() {
    const selectedGroupEntries = useMemo(() => selectedGroup ? resolveGroupEntries(selectedGroup) : [], [selectedGroup, submissionLookup]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeSubmissions = useMemo(() => submissions.filter((submission) => !submission.excludedFromMetrics), [submissions])
+  const confirmedSubmissions = useMemo(() => activeSubmissions.filter(isRsvpConfirmed), [activeSubmissions])
 
   const visibleSubmissions = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('pt-BR')
@@ -337,6 +404,158 @@ export function Guests() {
     }
   }
 
+  async function exportConfirmedGuestsPdf() {
+    if (confirmedSubmissions.length === 0) {
+      setExportError('Nao ha convidados confirmados para exportar no momento.')
+      return
+    }
+
+    setExportingPdf(true)
+    setExportError('')
+
+    try {
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4' })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 14
+      const tableBottomMargin = 16
+      const tableHeaderHeight = 8
+      const tableRowHeight = 7
+      const logoDataUrl = await loadImageDataUrl('/icon-192.png')
+      const generatedAt = new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date())
+
+      const coupleLabel = weddingProfile?.coupleNames.length
+        ? weddingProfile.coupleNames.map(toUpperPtBr).join(' E ')
+        : 'Nao informado'
+      const weddingDateLabel = weddingProfile?.weddingDate
+        ? `${formatIsoDate(weddingProfile.weddingDate)}${weddingProfile.ceremonyTime ? ` as ${weddingProfile.ceremonyTime}` : ''}`
+        : 'Nao informado'
+      const locationLabel = [weddingProfile?.venue, [weddingProfile?.city, weddingProfile?.state].filter(Boolean).join('/')]
+        .filter(Boolean)
+        .join(' - ')
+
+      const exportSubmissions = [...confirmedSubmissions].sort((a, b) => (
+        toUpperPtBr(a.name).localeCompare(toUpperPtBr(b.name), 'pt-BR', { sensitivity: 'base' })
+      ))
+
+      pdf.setFillColor(247, 243, 239)
+      pdf.rect(margin, 10, pageWidth - (margin * 2), 22, 'F')
+      if (logoDataUrl) {
+        pdf.addImage(logoDataUrl, 'PNG', margin + 3, 13.5, 14, 14)
+      }
+
+      pdf.setTextColor(76, 52, 54)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFontSize(14)
+      pdf.text('Serenata', margin + 22, 18)
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(10)
+      pdf.text('Lista de convidados confirmados', margin + 22, 23)
+      pdf.setTextColor(130, 108, 110)
+      pdf.setFontSize(9)
+      pdf.text(`Gerado em ${generatedAt}`, margin + 22, 28)
+
+      pdf.setFillColor(255, 255, 255)
+      pdf.setDrawColor(232, 221, 216)
+      pdf.rect(margin, 36, pageWidth - (margin * 2), 30, 'FD')
+
+      pdf.setTextColor(109, 87, 89)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFontSize(10)
+      pdf.text('Informacoes do casamento', margin + 4, 43)
+
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(9)
+      pdf.text(`Casal: ${coupleLabel}`, margin + 4, 49)
+      pdf.text(`Data: ${weddingDateLabel}`, margin + 4, 54)
+      pdf.text(`Local: ${locationLabel ? toUpperPtBr(locationLabel) : 'Nao informado'}`, margin + 4, 59)
+      pdf.text(`Confirmados: ${formatZeroAsDash(summary.people)} pessoas (${formatZeroAsDash(summary.adults)} adultos e ${formatZeroAsDash(summary.children)} criancas)`, margin + 4, 64)
+
+      const columns = [
+        { title: 'Convidado', width: 50 },
+        { title: 'Contato', width: 36 },
+        { title: 'Adultos', width: 16 },
+        { title: 'Criancas', width: 16 },
+        { title: 'Total', width: 14 },
+        { title: 'Confirmado em', width: 46 },
+      ] as const
+
+      const drawTableHeader = (top: number) => {
+        let currentX = margin
+        pdf.setFillColor(245, 237, 232)
+        pdf.rect(margin, top, pageWidth - (margin * 2), tableHeaderHeight, 'F')
+        pdf.setTextColor(94, 72, 74)
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(8)
+        columns.forEach((column) => {
+          pdf.text(column.title, currentX + 1.5, top + 5.5)
+          currentX += column.width
+        })
+      }
+
+      const drawRow = (top: number, values: string[]) => {
+        let currentX = margin
+        pdf.setDrawColor(238, 230, 226)
+        pdf.line(margin, top + tableRowHeight, pageWidth - margin, top + tableRowHeight)
+        pdf.setTextColor(82, 64, 65)
+        pdf.setFont('helvetica', 'normal')
+        pdf.setFontSize(8)
+        values.forEach((value, index) => {
+          const width = columns[index].width
+          const sliced = (pdf.splitTextToSize(value, width - 3)[0] ?? '') as string
+          const alignRight = index >= 2 && index <= 4
+          pdf.text(sliced, alignRight ? currentX + width - 1.5 : currentX + 1.5, top + 4.9, { align: alignRight ? 'right' : 'left' })
+          currentX += width
+        })
+      }
+
+      let y = 72
+      drawTableHeader(y)
+      y += tableHeaderHeight
+
+      exportSubmissions.forEach((submission) => {
+        if (y + tableRowHeight > pageHeight - tableBottomMargin) {
+          pdf.addPage()
+          y = 16
+          drawTableHeader(y)
+          y += tableHeaderHeight
+        }
+
+        drawRow(y, [
+          toUpperPtBr(submission.name),
+          submission.phone || '-',
+          formatZeroAsDash(submission.adults),
+          formatZeroAsDash(submission.children),
+          formatZeroAsDash(submission.totalGuests),
+          formatDate(submission.createdAt),
+        ])
+        y += tableRowHeight
+      })
+
+      const pages = pdf.getNumberOfPages()
+      for (let page = 1; page <= pages; page += 1) {
+        pdf.setPage(page)
+        pdf.setTextColor(140, 122, 123)
+        pdf.setFontSize(8)
+        pdf.text(`Pagina ${page} de ${pages}`, pageWidth - margin, pageHeight - 7, { align: 'right' })
+      }
+
+      const fileDate = new Date().toISOString().slice(0, 10)
+      pdf.save(`convidados-confirmados-${fileDate}.pdf`)
+    } catch (caught) {
+      console.error('Erro ao exportar PDF de convidados:', caught)
+      setExportError('Nao foi possivel exportar o PDF agora. Tente novamente em instantes.')
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
   return (
     <main className="dashboard-content guests-page">
       <div className="dashboard-title">
@@ -367,6 +586,9 @@ export function Guests() {
         <div className="guest-toolbar">
           <div><h2>Respostas recebidas</h2><p>{activeSubmissions.length} {activeSubmissions.length === 1 ? 'envio ativo' : 'envios ativos'}</p></div>
           <div className="guest-controls">
+            <button className="compact-primary guest-export-button" type="button" onClick={() => void exportConfirmedGuestsPdf()} disabled={loading || exportingPdf || confirmedSubmissions.length === 0}>
+              {exportingPdf ? <span className="spinner" /> : <><Download size={15} />Exportar PDF</>}
+            </button>
             <div className="search-field"><Search size={17} /><input aria-label="Buscar convidados" placeholder="Buscar nome ou telefone" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
             <div className="filter-group" aria-label="Filtrar respostas">
               <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>Todos</button>
@@ -375,6 +597,7 @@ export function Guests() {
             </div>
           </div>
         </div>
+        {exportError && <p className="form-message form-message--error" role="alert">{exportError}</p>}
 
         {loading && <div className="list-state"><span className="spinner spinner--wine" />Carregando confirmações...</div>}
         {error && <div className="list-state list-state--error"><X size={22} /><strong>Não foi possível acessar a lista</strong><p>{error}</p></div>}
